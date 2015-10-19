@@ -56,8 +56,16 @@ public class JSON2JEVisClassesCreator {
         JSON2JEVisClassesCreator wsc = new JSON2JEVisClassesCreator();
         wsc.connectToJEVis("localhost", "3306", "jevis", "jevis", "jevistest", "Sys Admin", "jevis");
         try {
-            wsc.processJSONFile("deleteSQLClasses.json");
-            wsc.processJSONFile("SQLClasses.json");
+            // Process all given json-files
+            if (args.length > 0) {
+                for (String jsonFile : args) {
+                    wsc.processJSONFile(jsonFile);
+                }
+            } else { // use defaults
+                wsc.processJSONFile("deleteSQLClasses.json");
+                wsc.processJSONFile("SQLClasses.json");
+            }
+            
         } catch (JEVisException ex) {
             Logger.getLogger(JSON2JEVisClassesCreator.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {

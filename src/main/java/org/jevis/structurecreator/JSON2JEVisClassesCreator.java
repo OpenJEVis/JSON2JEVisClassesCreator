@@ -1,5 +1,4 @@
 /**
- * Copyright (C) 2015 Werner Lamprecht
  * Copyright (C) 2015 Reinhold Gschweicher
  *
  * This program is free software: you can redistribute it and/or modify it under
@@ -25,11 +24,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.sql.Connection;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jevis.api.JEVisClass;
@@ -37,11 +33,8 @@ import org.jevis.api.JEVisClassRelationship;
 import org.jevis.api.JEVisConstants;
 import org.jevis.api.JEVisDataSource;
 import org.jevis.api.JEVisException;
-import org.jevis.api.JEVisRelationship;
 import org.jevis.api.JEVisType;
 import org.jevis.api.sql.JEVisDataSourceSQL;
-import org.jevis.commons.json.JsonFactory;
-import org.jevis.commons.json.JsonObject;
 import org.jevis.commons.json.JsonType;
 
 
@@ -50,7 +43,8 @@ public class JSON2JEVisClassesCreator {
         int IGNORE = -1;
         int CREATE = 0; // or update
         int DELETE = -2;
-        int RENAME = -3;
+        int DELETE_RECURSIVE = -3;
+        int RENAME = -4;
     }
     /**
      * The JEVisDataSource is the central class handling the connection to the
@@ -58,16 +52,12 @@ public class JSON2JEVisClassesCreator {
      */
     private static JEVisDataSource _jevis_ds;
     
-    /**
-     * Example how to use JSON2JEVisClassesCreator
-     *
-     * @param args not used
-     */
     public static void main(String[] args){
         JSON2JEVisClassesCreator wsc = new JSON2JEVisClassesCreator();
         wsc.connectToJEVis("localhost", "3306", "jevis", "jevis", "jevistest", "Sys Admin", "jevis");
         try {
-            wsc.createStructure();
+            wsc.processJSONFile("deleteSQLClasses.json");
+            wsc.processJSONFile("SQLClasses.json");
         } catch (JEVisException ex) {
             Logger.getLogger(JSON2JEVisClassesCreator.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
@@ -77,12 +67,13 @@ public class JSON2JEVisClassesCreator {
     
     /**
      * 
-     * Creates the JEVis-Classes for SQL Server
+     * Creates the JEVis-Classes given by jsonFile
      * 
+     * @param jsonFile path to file containing JSON-Formated class-description
      */
-    public void createStructure() throws JEVisException, IOException{
+    public void processJSONFile(String jsonFile) throws JEVisException, IOException{
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        String input = new String(Files.readAllBytes(Paths.get("SQLClasses.json")), StandardCharsets.UTF_8);
+        String input = new String(Files.readAllBytes(Paths.get(jsonFile)), StandardCharsets.UTF_8);
         
         JsonJEVisClass root = gson.fromJson(input, JsonJEVisClass.class);
         System.out.println(root.getOperation() + ":" + root.getName());
@@ -91,124 +82,127 @@ public class JSON2JEVisClassesCreator {
             createClass(parent, root);
         }
         
-        
         // Pretty-print current JEVis build
         //JEVisClass channelClass = _jevis_ds.getJEVisClass("Data Source");
         //System.out.println(gson.toJson(JsonFactory.buildJEVisClassComplete(channelClass)));
         
-        //PrimitiveType
-        //PrimitiveType.STRING = 0;
-        //PrimitiveType.DOUBLE = 1;
-        //PrimitiveType.LONG = 2;
-        //PrimitiveType.FILE = 3;
-        //PrimitiveType.BOOLEAN = 4;
-        
-        
     }
         
     /**
-     * Create a class under the given parent class
-     * @param className Name of the class to create.
-     * @param parentName Name of the parent-class.
-     * @param types Array of names for the types/attributes to create.
-     * @param validParents Array of names of valid parents for the new class.
-     * @return The newly created class, null if the class already existed.
-     * @throws JEVisException
+     * Create a class under the given parent class and all its children.
+     * @param jsonClass Structured information for JEVisClass to create.
+     * @param parent Structured information of the parent of the class to create.
+     * @return the created JEVisClass, null on error
      */
-    public JEVisClass createClass(JsonJEVisClass jevisClass, JsonJEVisClass parent)
+    public JEVisClass createClass(JsonJEVisClass jsonClass, JsonJEVisClass parent)
             throws JEVisException {
         int relInherit = JEVisConstants.ClassRelationship.INHERIT;
         int relDir = JEVisConstants.Direction.FORWARD;
         int relValidParent = JEVisConstants.ClassRelationship.OK_PARENT;
         
-        String className = jevisClass.getName();
+        String className = jsonClass.getName();
         String parentName = parent.getName();
-        System.out.println(String.format("Processing class/parent: '%s/%s'",
-                className, parentName));
+        System.out.println(String.format("Processing op/class/parent: '%d/%s/%s'",
+                jsonClass.getOperation(), className, parentName));
         
-        int op = jevisClass.getOperation();
+        // Get parent JEVisClass
+        JEVisClass parentClass = _jevis_ds.getJEVisClass(parent.getName());
+        
+        // Get JEVisClass given by jsonClass
+        JEVisClass jevisClass = _jevis_ds.getJEVisClass(className);
+        
+        // Execute specified operation
+        boolean createCurrentClass = true;
+        int op = jsonClass.getOperation();
         if (op == OPERATIONS.IGNORE) {
-            for (JsonJEVisClass child : jevisClass.getChildren()) {
-                createClass(child, jevisClass);
-            }
-            return null;
+            System.out.println("\tIgnore Class: " + className);
+            createCurrentClass = false;
         } else if (op == OPERATIONS.DELETE) {
-            // TODO: delete class
-            System.out.println("Error: operation delete class not implemented. Class: " + jevisClass.getName());
-            return null;
+            System.out.println("\tDelete Class: " + className);
+            if (jevisClass != null) {
+                deleteClass(jevisClass);
+            } else {
+                System.out.println("\tclass not found, carry on: " + className);
+            }
+            createCurrentClass = false;
+        } else if (op == OPERATIONS.DELETE_RECURSIVE) {
+            System.out.println("\tDelete Class recursive: " + className);
+            if (jevisClass != null) {
+                deleteClassRec(jevisClass);
+            } else {
+                System.out.println("\tclass not found, carry on: " + className);
+            }
+            createCurrentClass = false;
         } else if (op == OPERATIONS.RENAME) {
             // TODO: rename class
-            System.out.println("Error: operation rename class not implemented. Class: " + jevisClass.getName());
+            System.out.println("Error: operation 'RENAME' not implemented. Class: " + className);
             return null;
         }
         // else { // op == OPERATIONS.CREATE
-         
         
-        // get parent
-        JEVisClass parentClass = _jevis_ds.getJEVisClass(parent.getName());
-        if (parentClass == null) {
-            System.out.println(String.format("Error: Cant find parent JEVisClass: '%s'",
-                    parentName));
-            return null;
+        // Dependent on the previous operation create a new class or not
+        if (createCurrentClass) {
+            // create new class
+            if (jevisClass == null) {
+                System.out.println("\tCreate JEVisClass: " + className);
+                jevisClass = _jevis_ds.buildClass(className);
+                
+                // Link new class under parent, except parent is 'oot'
+                if (!parentName.equals("root")) {
+                    if (parentClass == null) {
+                        System.out.println(String.format("Error: Cant find parent JEVisClass: '%s'",
+                                parentName));
+                        return null;
+                    }
+                    jevisClass.buildRelationship(parentClass, relInherit, relDir);
+
+                    // Set the icon from the parent
+                    // TODO: what icon to use for classes under root?
+                    jevisClass.setIcon(parentClass.getIcon());
+                }
+
+                // Add valid parents
+                for (JsonJEVisClass vp : jsonClass.getValidParents()) {
+                    jevisClass.buildRelationship(_jevis_ds.getJEVisClass(vp.getName()),
+                            relValidParent, relDir);
+                }
+
+                // Create the types/attributes for the new class
+                List<JsonType> types;
+                if ((types = jsonClass.getTypes()) == null) {
+                    types = new ArrayList<>();
+                }
+                for (JsonType type : types) {
+                    //PrimitiveType
+                    //PrimitiveType.STRING = 0;
+                    //PrimitiveType.DOUBLE = 1;
+                    //PrimitiveType.LONG = 2;
+                    //PrimitiveType.FILE = 3;
+                    //PrimitiveType.BOOLEAN = 4;
+                    String typeName = type.getName();
+                    System.out.println(String.format("\tcreate new type: class/type '%s'/'%s'",
+                            className, typeName));
+                    JEVisType newType = jevisClass.buildType(typeName);
+                    newType.setPrimitiveType(type.getPrimitiveType());
+                }
+                // Commit the changes
+                jevisClass.commit();
+
+                
+            } else {
+                System.out.println("\tJEVisClass exists, not changing the class: " + className);
+            }
+            
         }
         
-        JEVisClass newJClass = null;
-        // Delete Class and its children if it exists
-        newJClass = _jevis_ds.getJEVisClass(className);
-        if (newJClass != null) {
-            deleteClassRec(newJClass);
+        // Process jsonClass-children
+        for (JsonJEVisClass child : jsonClass.getChildren()) {
+            createClass(child, jsonClass);
         }
-        // create new class
-        System.out.println("Create Class: " + className);
-        newJClass = _jevis_ds.buildClass(className);
-        // Link new class under parent
-        newJClass.buildRelationship(parentClass, relInherit, relDir);
-        
-        // Set the icon from the parent
-        newJClass.setIcon(parentClass.getIcon());
-        
-        // Add valid parents
-        for (JsonJEVisClass vp : jevisClass.getValidParents()) {
-            newJClass.buildRelationship(_jevis_ds.getJEVisClass(vp.getName()),
-                    relValidParent, relDir);
-        }
-        
-        // Create the types/attributes for the new class
-        // TODO: delete old types
-        List<JsonType> types = jevisClass.getTypes();
-        if (types == null)
-            types = new ArrayList<>();
-        for (JsonType type : types) {
-            String typeName = type.getName();
-            System.out.println(String.format("In class '%s' create new type '%s'",
-                    className, typeName));
-            JEVisType newType = newJClass.buildType(typeName);
-            newType.setPrimitiveType(type.getPrimitiveType());
-        }
-        
-        // Commit the changes
-        newJClass.commit();
-        
-        // Create children
-        for (JsonJEVisClass child : jevisClass.getChildren()) {
-            createClass(child, jevisClass);
-        }
-        return newJClass;
+        return jevisClass;
         
     }
-    public void deleteClassRec(JEVisClass jevisClass) throws JEVisException {
-        String className = jevisClass.getName();
-        System.out.println("Delete Class enter recursion: " + className);
-        
-        // Delete children first
-        List<JEVisClassRelationship> childRels = jevisClass.getRelationships(JEVisConstants.ClassRelationship.INHERIT, JEVisConstants.Direction.FORWARD);
-        for (JEVisClassRelationship rel : childRels) {
-            JEVisClass child = rel.getOtherClass(jevisClass);
-            deleteClassRec(child);
-        }
-        
-        deleteClass(jevisClass);
-    }
+    
     public void deleteClass(JEVisClass jevisClass) throws JEVisException {
         String className = jevisClass.getName();
         System.out.println("Delete Class: " + className);
@@ -217,48 +211,28 @@ public class JSON2JEVisClassesCreator {
             type.delete();
         }
         jevisClass.delete();
-    }
-    
-    public JEVisClass createClassbak(String className, String parentName,
-            String[] types, String[] validParents) throws JEVisException {
-        int relInherit = JEVisConstants.ClassRelationship.INHERIT;
-        int relDir = JEVisConstants.Direction.FORWARD;
-        int relValidParent = JEVisConstants.ClassRelationship.OK_PARENT;
+    }    
+    public void deleteClassRec(JEVisClass jevisClass) throws JEVisException {
+        String className = jevisClass.getName();
+        System.out.println("Delete Class enter recursion: " + className);
         
-        // Only create class if it does not exist
-        if (_jevis_ds.getJEVisClass(className) != null) {
-            System.out.println(
-                String.format("Class '%s' already exists, not changing the classes", className));
-            return null;
+        // Delete children first
+        for (JEVisClass child : getChildren(jevisClass)) {
+            deleteClassRec(child);
         }
         
-        // get parent
-        JEVisClass parentClass = _jevis_ds.getJEVisClass(parentName);
-        // create new class
-        JEVisClass newJClass = _jevis_ds.buildClass(className);
-        // Link new class under parent
-        newJClass.buildRelationship(parentClass, relInherit, relDir);
-        // Set the icon from the parent
-        newJClass.setIcon(parentClass.getIcon());
-        
-        // Add valid parents
-        if (validParents == null)
-            validParents = new String[] {};
-        for (String vp : validParents)
-            newJClass.buildRelationship(_jevis_ds.getJEVisClass(vp), relValidParent, relDir);
-        
-        // Create the types/attributes for the new class
-        if (types == null)
-            types = new String[] {};
-        for (String t : types) {
-            newJClass.buildType(t);
-        }
-        
-        // Commit the changes
-        newJClass.commit();
-        return newJClass;
+        deleteClass(jevisClass);
     }
     
+    public List<JEVisClass> getChildren(JEVisClass jevisClass) throws JEVisException {
+        ArrayList<JEVisClass> children = new ArrayList<>();
+        List<JEVisClassRelationship> childRels = jevisClass.getRelationships(JEVisConstants.ClassRelationship.INHERIT, JEVisConstants.Direction.BACKWARD);
+        for (JEVisClassRelationship rel : childRels) {
+            JEVisClass child = rel.getOtherClass(jevisClass);
+            children.add(child);
+        }
+        return children;
+    }
     
     /**
      * 

@@ -1,0 +1,27 @@
+{
+    "name": "root",
+    "operation": "-1",
+    "children": [
+        {
+            "name": "SQL Server",
+            "operation": "-3"
+        },
+        {
+            "name": "SQL Channel Directory",
+            "operation": "-2"
+        },
+        {
+            "name": "SQL Channel",
+            "operation": "-2"
+        },
+        {
+            "name": "SQL Data Point Directory",
+            "operation": "-2"
+        },
+        {
+            "name": "SQL Data Point",
+            "operation": "-2"
+        }
+    ]
+}
+

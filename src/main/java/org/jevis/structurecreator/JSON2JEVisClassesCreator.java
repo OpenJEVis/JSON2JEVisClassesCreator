@@ -40,11 +40,11 @@ import org.jevis.commons.json.JsonType;
 
 public class JSON2JEVisClassesCreator {
     private interface OPERATIONS {
-        int IGNORE = -1;
-        int CREATE = 0; // or update
-        int DELETE = -2;
-        int DELETE_RECURSIVE = -3;
-        int RENAME = -4;
+        final long CREATE = 0; // or update
+        final long IGNORE = -1;
+        final long DELETE = -2;
+        final long DELETE_RECURSIVE = -3;
+        final long RENAME = -4;
     }
     /**
      * The JEVisDataSource is the central class handling the connection to the
@@ -121,7 +121,7 @@ public class JSON2JEVisClassesCreator {
         
         // Execute specified operation
         boolean createCurrentClass = true;
-        int op = jsonClass.getOperation();
+        long op = jsonClass.getOperation();
         if (op == OPERATIONS.IGNORE) {
             System.out.println("\tIgnore Class: " + className);
             createCurrentClass = false;

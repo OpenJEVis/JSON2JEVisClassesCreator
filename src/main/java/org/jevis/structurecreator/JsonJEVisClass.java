@@ -13,11 +13,11 @@ import java.util.List;
  * @author ait-user
  */
 public class JsonJEVisClass extends org.jevis.commons.json.JsonJEVisClass{
-    private int operation;
+    private long operation;
     private List<JsonJEVisClass> children = new ArrayList<>();
     private List<JsonJEVisClass> validParents = new ArrayList<>();
     
-    public int getOperation() {
+    public long getOperation() {
         return operation;
     }
     public List<JsonJEVisClass> getChildren() {

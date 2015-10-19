@@ -19,6 +19,10 @@
                         {
                             "name": "MySQL Server",
                             "validParents": [{"name": "Data Source Directory"}]
+                        },
+                        {
+                            "name": "MSSQL Server",
+                            "validParents": [{"name": "Data Source Directory"}]
                         }
                     ]
                 }
@@ -30,7 +34,11 @@
             "children": [
                 {
                     "name": "SQL Channel Directory",
-                    "validParents": [{"name": "SQL Server"}]
+                    "validParents": [
+                        {"name": "SQL Server"},
+                        {"name": "MySQL Server"},
+                        {"name": "MSSQL Server"}
+                    ]
                 }
             ]
         },

@@ -1,0 +1,52 @@
+{
+    "name": "root",
+    "operation": "-1",
+    "children": [
+        {
+            "name": "Test Parent"
+        },
+        {
+            "name": "Test Classes Directory",
+            "operation": "0",
+            "children": [
+                {
+                    "name": "test1",
+                    "operation": "0",
+                    "types": [
+                        {"name": "type1"},
+                        {"name": "type2"}
+                    ],
+                    "validParents": [{"name": "Test Parent"}],
+                    "children": [
+                        {
+                            "name": "Class with all primitive types",
+                            "types": [
+                                {
+                                    "name": "default type string",
+                                    "primitiveType": "0"
+                                },
+                                {
+                                    "name": "type double",
+                                    "primitiveType": "1"
+                                },
+                                {
+                                    "name": "type long",
+                                    "primitiveType": "2"
+                                },
+                                {
+                                    "name": "type file",
+                                    "primitiveType": "3"
+                                },
+                                {
+                                    "name": "type boolean",
+                                    "primitiveType": "4"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+

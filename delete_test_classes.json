@@ -1,0 +1,14 @@
+{
+    "name": "root",
+    "operation": "-1",
+    "children": [
+        {
+            "name": "Test Parent",
+            "operation": "-2"
+        },
+        {
+            "name": "Test Classes Directory",
+            "operation": "-3"
+        }
+    ]
+}

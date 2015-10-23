@@ -11,6 +11,7 @@
                     "operation": "0",
                     "types": [
                         {"name": "Schema"},
+                        {"name": "Domain"},
                         {"name": "User"},
                         {"name": "Password"}
                     ],

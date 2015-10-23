@@ -216,7 +216,13 @@ public class JSON2JEVisClassesCreator {
         System.out.println("Delete Class: " + className);
         // Delete class
         for (JEVisType type : jevisClass.getTypes()) {
-            type.delete();
+            if (type.getJEVisClass().getName().equals(className)) {
+                System.out.println("\t delete type: " + type.getName());
+                type.delete();
+            } else {
+                System.out.println(String.format("\t won't delete type/fromClass: '%s/%s'",
+                        type.getName(), type.getJEVisClass().getName()));
+            }
         }
         jevisClass.delete();
     }    

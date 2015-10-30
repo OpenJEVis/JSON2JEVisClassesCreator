@@ -12,17 +12,20 @@ import java.util.List;
  *
  * @author ait-user
  */
-public class JsonJEVisClass extends org.jevis.commons.json.JsonJEVisClass{
-    private long operation;
+public class JsonJEVisClass extends org.jevis.commons.json.JsonJEVisClass {
+
+    private String operation;
     private List<JsonJEVisClass> children = new ArrayList<>();
     private List<JsonJEVisClass> validParents = new ArrayList<>();
-    
-    public long getOperation() {
+
+    public String getOperation() {
         return operation;
     }
+
     public List<JsonJEVisClass> getChildren() {
         return children;
     }
+
     public List<JsonJEVisClass> getValidParents() {
         return validParents;
     }
